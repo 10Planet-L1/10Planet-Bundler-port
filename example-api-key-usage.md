@@ -53,9 +53,52 @@ alto --api-key "secret123" --protected-methods "eth_sendUserOperation,boost_send
 alto  # No --api-key flag means no authentication required
 ```
 
+## WebSocket Authentication
+
+WebSocket connections also support API key authentication for protected methods.
+
+### Using API key in query parameter:
+```javascript
+const ws = new WebSocket('ws://localhost:3000/rpc?apiKey=your-secret-api-key');
+
+ws.on('open', () => {
+  ws.send(JSON.stringify({
+    jsonrpc: "2.0",
+    method: "eth_sendUserOperation",
+    params: [...],
+    id: 1
+  }));
+});
+```
+
+### Using API key in headers (Node.js example):
+```javascript
+const WebSocket = require('ws');
+
+const ws = new WebSocket('ws://localhost:3000/rpc', {
+  headers: {
+    'x-api-key': 'your-secret-api-key'
+  }
+});
+```
+
+### WebSocket error response for unauthorized requests:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "error": {
+    "code": -32001,
+    "message": "Unauthorized: Invalid or missing API key"
+  }
+}
+```
+
 ## Notes
 
 - If no `--api-key` is provided, authentication is disabled
 - If `--api-key` is provided but `--protected-methods` is empty, no methods are protected
 - Unprotected methods can be called without an API key
 - The `/health` and `/metrics` endpoints are never protected
+- WebSocket connections support API key via query parameter or headers
+- The same protected methods list applies to both HTTP and WebSocket endpoints

@@ -24,7 +24,7 @@ import type { AltoConfig } from "../createConfig"
 import rpcDecorators, { RpcStatus } from "../utils/fastify-rpc-decorators"
 import RpcReply from "../utils/rpc-reply"
 import type { RpcHandler } from "./rpcHandler"
-import { createApiKeyAuthMiddleware } from "./middleware/apiKeyAuth"
+import { createApiKeyAuthMiddleware, validateApiKey, type ApiKeyAuthConfig } from "./middleware/apiKeyAuth"
 
 // jsonBigIntOverride.ts
 const originalJsonStringify = JSON.stringify
@@ -66,6 +66,7 @@ export class Server {
     private rpcEndpoint: RpcHandler
     private registry: Registry
     private metrics: Metrics
+    private authConfig: ApiKeyAuthConfig | null = null
 
     constructor({
         config,
@@ -102,12 +103,13 @@ export class Server {
 
         // Add API key authentication if configured
         if (config.apiKey && config.protectedMethods && config.protectedMethods.length > 0) {
+            this.authConfig = {
+                apiKey: config.apiKey,
+                protectedMethods: config.protectedMethods
+            }
             this.fastify.addHook(
                 "preHandler",
-                createApiKeyAuthMiddleware({
-                    apiKey: config.apiKey,
-                    protectedMethods: config.protectedMethods
-                })
+                createApiKeyAuthMiddleware(this.authConfig)
             )
         }
 
@@ -153,8 +155,14 @@ export class Server {
                             )
                     },
                     wsHandler: (socket: WebSocket.WebSocket, request) => {
+                        // Extract API key from query parameters or headers
+                        const url = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`)
+                        const apiKeyFromQuery = url.searchParams.get('apiKey')
+                        const apiKeyFromHeader = request.headers['x-api-key'] as string | undefined
+                        const apiKey = apiKeyFromQuery || apiKeyFromHeader
+                        
                         socket.on("message", async (msgBuffer: Buffer) =>
-                            this.rpcSocket(request, msgBuffer, socket)
+                            this.rpcSocket(request, msgBuffer, socket, apiKey)
                         )
                     }
                 })
@@ -187,10 +195,13 @@ export class Server {
     private async rpcSocket(
         request: FastifyRequest,
         msgBuffer: Buffer,
-        socket: WebSocket.WebSocket
+        socket: WebSocket.WebSocket,
+        apiKey?: string
     ): Promise<void> {
+        let parsedBody: any
         try {
-            request.body = JSON.parse(msgBuffer.toString())
+            parsedBody = JSON.parse(msgBuffer.toString())
+            request.body = parsedBody
         } catch (err) {
             socket.send(
                 JSON.stringify({
@@ -204,6 +215,22 @@ export class Server {
                 })
             )
             return
+        }
+
+        // Validate API key for WebSocket connections
+        if (this.authConfig) {
+            const validation = validateApiKey(this.authConfig, parsedBody, apiKey)
+            if (!validation.isValid && validation.error) {
+                const requestId = parsedBody?.id || null
+                socket.send(
+                    JSON.stringify({
+                        jsonrpc: "2.0",
+                        id: requestId,
+                        error: validation.error
+                    })
+                )
+                return
+            }
         }
 
         await this.rpc(request, RpcReply.fromSocket(socket))

@@ -6,6 +6,54 @@ export interface ApiKeyAuthConfig {
     protectedMethods: string[]
 }
 
+export interface AuthValidationResult {
+    isValid: boolean
+    error?: {
+        code: number
+        message: string
+    }
+}
+
+/**
+ * Validates API key for the given RPC methods
+ */
+export const validateApiKey = (
+    config: ApiKeyAuthConfig,
+    body: JSONRPCRequest | JSONRPCRequest[] | null,
+    providedKey: string | undefined
+): AuthValidationResult => {
+    if (!body) {
+        return { isValid: true }
+    }
+
+    // Extract the RPC method(s)
+    const methods = Array.isArray(body) 
+        ? body.map(req => req.method)
+        : [body.method]
+
+    // Check if any of the methods require authentication
+    const requiresAuth = methods.some(method => 
+        config.protectedMethods.includes(method)
+    )
+
+    if (!requiresAuth) {
+        return { isValid: true }
+    }
+
+    // Check API key
+    if (!providedKey || providedKey !== config.apiKey) {
+        return {
+            isValid: false,
+            error: {
+                code: -32001,
+                message: "Unauthorized: Invalid or missing API key"
+            }
+        }
+    }
+
+    return { isValid: true }
+}
+
 export const createApiKeyAuthMiddleware = (config: ApiKeyAuthConfig) => {
     return async (
         request: FastifyRequest,
@@ -18,35 +66,15 @@ export const createApiKeyAuthMiddleware = (config: ApiKeyAuthConfig) => {
 
         // Parse the request body to get the RPC method
         const body = request.body as JSONRPCRequest | JSONRPCRequest[]
-        if (!body) {
-            return
-        }
-
-        // Extract the RPC method(s)
-        const methods = Array.isArray(body) 
-            ? body.map(req => req.method)
-            : [body.method]
-
-        // Check if any of the methods require authentication
-        const requiresAuth = methods.some(method => 
-            config.protectedMethods.includes(method)
-        )
-
-        if (!requiresAuth) {
-            return
-        }
-
-        // Check API key
         const providedKey = request.headers["x-api-key"] as string
 
-        if (!providedKey || providedKey !== config.apiKey) {
+        const validation = validateApiKey(config, body, providedKey)
+        
+        if (!validation.isValid && validation.error) {
             reply.code(401).send({
                 jsonrpc: "2.0",
                 id: null,
-                error: {
-                    code: -32001,
-                    message: "Unauthorized: Invalid or missing API key"
-                }
+                error: validation.error
             })
             return
         }
