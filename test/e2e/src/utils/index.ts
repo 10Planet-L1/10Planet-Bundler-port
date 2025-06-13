@@ -189,6 +189,104 @@ export const sendBundleNow = async ({ altoRpc }: { altoRpc: string }) => {
     })
 }
 
+export const createAuthenticatedClient = ({
+    altoRpc,
+    apiKey
+}: {
+    altoRpc: string
+    apiKey: string
+}) => {
+    return createPublicClient({
+        chain: foundry,
+        transport: http(altoRpc, {
+            fetchOptions: {
+                headers: {
+                    "x-api-key": apiKey
+                }
+            }
+        })
+    })
+}
+
+export const getAuthenticatedSmartAccountClient = async ({
+    entryPointVersion,
+    anvilRpc,
+    altoRpc,
+    apiKey,
+    use7702 = false,
+    privateKey = generatePrivateKey()
+}: AAParamType & { apiKey: string }): Promise<
+    SmartAccountClient<Transport, Chain, SmartAccount>
+> => {
+    const publicClient = getPublicClient(anvilRpc)
+
+    let account: SmartAccount
+
+    if (use7702 && entryPointVersion === "0.8") {
+        account = await toSimple7702SmartAccount({
+            owner: privateKeyToAccount(privateKey),
+            client: publicClient
+        })
+    } else if (use7702) {
+        account = await toSimpleSmartAccount({
+            client: publicClient,
+            entryPoint: {
+                address: getEntryPointAddress(entryPointVersion),
+                version: entryPointVersion
+            },
+            owner: privateKeyToAccount(privateKey)
+        })
+
+        account.address = privateKeyToAddress(privateKey)
+        account.getFactoryArgs = async () => ({
+            factory: undefined,
+            factoryData: undefined
+        })
+    } else {
+        account = await toSimpleSmartAccount({
+            client: publicClient,
+            entryPoint: {
+                address: getEntryPointAddress(entryPointVersion),
+                version: entryPointVersion
+            },
+            owner: privateKeyToAccount(privateKey)
+        })
+    }
+
+    const anvilClient = createTestClient({
+        transport: http(anvilRpc),
+        chain: foundry,
+        mode: "anvil"
+    })
+
+    await anvilClient.setBalance({
+        address: account.address,
+        value: parseEther("100")
+    })
+
+    return createSmartAccountClient({
+        pollingInterval: 100,
+        account,
+        chain: foundry,
+        bundlerTransport: http(altoRpc, {
+            fetchOptions: {
+                headers: {
+                    "x-api-key": apiKey
+                }
+            }
+        }),
+        userOperation: {
+            estimateFeesPerGas: async () =>
+                (
+                    await getPimlicoClient({
+                        entryPointVersion,
+                        altoRpc
+                    }).getUserOperationGasPrice()
+                ).fast
+        }
+    })
+}
+
 export const clearBundlerState = async ({ altoRpc }: { altoRpc: string }) => {
     await fetch(altoRpc, {
         method: "POST",
