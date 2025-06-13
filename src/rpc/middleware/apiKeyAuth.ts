@@ -1,5 +1,5 @@
-import type { FastifyRequest, FastifyReply, HookHandlerDoneFunction } from "fastify"
-import type { JsonRpcRequest } from "@alto/types"
+import type { FastifyRequest, FastifyReply } from "fastify"
+import type { JSONRPCRequest } from "@alto/types"
 
 export interface ApiKeyAuthConfig {
     apiKey: string
@@ -9,18 +9,17 @@ export interface ApiKeyAuthConfig {
 export const createApiKeyAuthMiddleware = (config: ApiKeyAuthConfig) => {
     return async (
         request: FastifyRequest,
-        reply: FastifyReply,
-        done: HookHandlerDoneFunction
+        reply: FastifyReply
     ) => {
         // Skip auth for non-RPC endpoints
         if (!["/rpc", "/", "/v1/rpc", "/v2/rpc"].includes(request.url) && !request.url.match(/^\/v\d+\/rpc$/)) {
-            return done()
+            return
         }
 
         // Parse the request body to get the RPC method
-        const body = request.body as JsonRpcRequest | JsonRpcRequest[]
+        const body = request.body as JSONRPCRequest | JSONRPCRequest[]
         if (!body) {
-            return done()
+            return
         }
 
         // Extract the RPC method(s)
@@ -34,7 +33,7 @@ export const createApiKeyAuthMiddleware = (config: ApiKeyAuthConfig) => {
         )
 
         if (!requiresAuth) {
-            return done()
+            return
         }
 
         // Check API key
@@ -51,7 +50,5 @@ export const createApiKeyAuthMiddleware = (config: ApiKeyAuthConfig) => {
             })
             return
         }
-
-        done()
     }
 }
