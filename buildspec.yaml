@@ -3,6 +3,10 @@ version: 0.2
 phases:
   pre_build:
     commands:
+      - echo Checking contracts directory structure...
+      - ls -la contracts/lib/
+      - ls -la contracts/lib/account-abstraction-v6/ || echo "account-abstraction-v6 directory not found"
+      - ls -la contracts/lib/account-abstraction-v6/contracts/ || echo "contracts subdirectory not found"
       - echo Logging in to Amazon ECR... AWS_ACCOUNT_ID=181962849998 AWS_REGION=$AWS_REGION
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin "181962849998.dkr.ecr.$AWS_REGION.amazonaws.com"
   build:
