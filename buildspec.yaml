@@ -4,7 +4,7 @@ phases:
   install:
     commands:
       - echo Installing git and downloading submodules...
-      - apt-get update && apt-get install -y git
+      - yum install -y git
       # Download submodules manually since CodePipeline doesn't include them
       - cd contracts/lib
       - rm -rf account-abstraction-v6 && git clone --branch v0.6.0 --depth 1 https://github.com/eth-infinitism/account-abstraction.git account-abstraction-v6
