@@ -59,8 +59,12 @@ export const createApiKeyAuthMiddleware = (config: ApiKeyAuthConfig) => {
         request: FastifyRequest,
         reply: FastifyReply
     ) => {
+        // Extract pathname without query parameters
+        const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`)
+        const pathname = url.pathname
+        
         // Skip auth for non-RPC endpoints
-        if (!["/rpc", "/", "/v1/rpc", "/v2/rpc"].includes(request.url) && !request.url.match(/^\/v\d+\/rpc$/)) {
+        if (!["/rpc", "/", "/v1/rpc", "/v2/rpc"].includes(pathname) && !pathname.match(/^\/v\d+\/rpc$/)) {
             return
         }
 
