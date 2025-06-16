@@ -19,5 +19,7 @@
     "enforce-unique-senders-per-bundle": false,
     "code-override-support": true,
     "enable-instant-bundling-endpoint": true,
-    "bundling-mode": "manual"
+    "bundling-mode": "manual",
+    "api-key": "test-api-key-123",
+    "protected-methods": "eth_sendUserOperation,eth_estimateUserOperationGas"
 }
