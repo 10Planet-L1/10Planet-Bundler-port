@@ -51,6 +51,9 @@ RUN pnpm fetch
 
 RUN pnpm install -r --offline --frozen-lockfile
 
+# Clean any existing build artifacts before building
+RUN rm -rf src/esm
+
 RUN pnpm build
 
 # start app
