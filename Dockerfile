@@ -45,4 +45,5 @@ RUN pnpm install -r --offline --frozen-lockfile
 
 RUN pnpm build
 
-ENTRYPOINT ["pnpm", "start"]
+# start app
+ENTRYPOINT pnpm start --entrypoints ${ENTRYPOINT} --min-executor-balance ${MIN_BALANCE} --rpc-url ${RPC_URL} --executor-private-keys ${PRIVATE_KEY} --utility-private-key ${PRIVATE_KEY} --max-block-range 500 --port ${PORT} --safe-mode false --entrypoint-simulation-contract-v7 ${ENTRYPOINT_SIMULATION_CONTRACT} --paymaster-gas-limit-multiplier "200" --api-key ${BUNDLER_API_KEY} --protected-methods "eth_sendUserOperation,pimlico_sendUserOperationNow,boost_sendUserOperation,eth_estimateUserOperationGas" --code-override-support false
