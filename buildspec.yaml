@@ -1,12 +1,23 @@
 version: 0.2
 
 phases:
+  install:
+    commands:
+      - echo Installing git and downloading submodules...
+      - apt-get update && apt-get install -y git
+      # Download submodules manually since CodePipeline doesn't include them
+      - cd contracts/lib
+      - rm -rf account-abstraction-v6 && git clone --branch v0.6.0 --depth 1 https://github.com/eth-infinitism/account-abstraction.git account-abstraction-v6
+      - rm -rf account-abstraction-v7 && git clone --branch v0.7.0 --depth 1 https://github.com/eth-infinitism/account-abstraction.git account-abstraction-v7
+      - rm -rf account-abstraction-v8 && git clone --branch v0.8.0 --depth 1 https://github.com/eth-infinitism/account-abstraction.git account-abstraction-v8
+      - rm -rf forge-std && git clone --branch v1.7.6 --depth 1 https://github.com/foundry-rs/forge-std.git forge-std
+      - rm -rf openzeppelin-contracts && git clone --branch v5.0.0 --depth 1 https://github.com/OpenZeppelin/openzeppelin-contracts.git openzeppelin-contracts
+      - rm -rf openzeppelin-contracts-51 && git clone --branch v5.1.0 --depth 1 https://github.com/OpenZeppelin/openzeppelin-contracts.git openzeppelin-contracts-51
+      - rm -rf solady && git clone --branch v0.0.268 --depth 1 https://github.com/Vectorized/solady.git solady
+      - rm -rf bulk && git clone --branch 0.3.0 --depth 1 https://github.com/daimo-eth/bulk.git bulk
+      - cd ../..
   pre_build:
     commands:
-      - echo Checking contracts directory structure...
-      - ls -la contracts/lib/
-      - ls -la contracts/lib/account-abstraction-v6/ || echo "account-abstraction-v6 directory not found"
-      - ls -la contracts/lib/account-abstraction-v6/contracts/ || echo "contracts subdirectory not found"
       - echo Logging in to Amazon ECR... AWS_ACCOUNT_ID=181962849998 AWS_REGION=$AWS_REGION
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin "181962849998.dkr.ecr.$AWS_REGION.amazonaws.com"
   build:
