@@ -1,0 +1,18 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR... AWS_ACCOUNT_ID=181962849998 AWS_REGION=$AWS_REGION
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin "181962849998.dkr.ecr.$AWS_REGION.amazonaws.com"
+  build:
+    commands:
+      - echo Build started on `date`... REPOSITORY_NAME=$REPOSITORY_NAME IMAGE_TAG=$IMAGE_TAG
+      - export DOCKER_BUILDKIT=1 #enable buildkit for using buildx.
+      - docker build -t $REPOSITORY_NAME:$IMAGE_TAG . # NOTE the build-arg. Important for letting the client get the env
+      - docker tag $REPOSITORY_NAME:$IMAGE_TAG 181962849998.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push 181962849998.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG
