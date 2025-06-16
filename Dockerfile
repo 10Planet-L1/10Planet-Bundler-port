@@ -3,21 +3,28 @@ FROM ghcr.io/foundry-rs/foundry:v1.1.0 AS builder
 
 WORKDIR /build
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
-
-# Copy contracts including the lib directory with submodules
-COPY contracts ./contracts
-
 # --- FIX: Switch to root user to install packages ---
 USER root
 # ----------------------------------------------------
 
 RUN apt-get update && \
-    apt-get install -y curl gnupg ca-certificates && \
+    apt-get install -y curl gnupg ca-certificates git && \
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/* && \
     corepack enable
+
+# Copy package files first
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
+
+# Copy git metadata and contracts directory
+COPY .git .git
+COPY .gitmodules .gitmodules
+COPY contracts contracts
+
+# Initialize git submodules
+RUN git config --global --add safe.directory /build && \
+    git submodule update --init --recursive
 
 RUN pnpm install --frozen-lockfile
 
