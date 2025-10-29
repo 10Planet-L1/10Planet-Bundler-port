@@ -1,6 +1,6 @@
 {
     "network-name": "local",
-    "rpc-url": "https://rpc-staging.10planet.com",
+    "rpc-url": "https://rpc-staging.bitplanet.ai",
     "min-entity-stake": 1,
     "min-executor-balance": "0",
     "min-balance": "0",
